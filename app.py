@@ -162,9 +162,34 @@ st.markdown(
     .stApp, [data-testid="stSidebar"] { direction: rtl; }
     .stApp h1, .stApp h2, .stApp h3, .stApp p, .stApp li, .stApp label,
     [data-testid="stSidebar"] * { text-align: right; }
+    .stApp, [data-testid="stSidebar"], [data-testid="stMarkdownContainer"],
+    [data-testid="stChatMessageContent"] {
+        word-break: normal;
+        overflow-wrap: anywhere;
+    }
     @media (max-width: 640px) {
         .block-container {
             padding: 1rem 0.8rem 5rem;
+            width: 100%;
+            max-width: 100%;
+        }
+        [data-testid="stSidebar"] { min-width: min(18rem, 88vw); }
+        [data-testid="stSidebar"] section,
+        [data-testid="stSidebar"] .stSelectbox,
+        [data-testid="stSidebar"] .stRadio,
+        [data-testid="stSidebar"] .stTextInput,
+        [data-testid="stSidebar"] .stMarkdown,
+        [data-testid="stSidebar"] button {
+            width: 100%;
+            min-width: 0;
+        }
+        [data-testid="stSidebar"] p,
+        [data-testid="stSidebar"] label,
+        [data-testid="stSidebar"] button,
+        .stApp p, .stApp label, .stApp button {
+            white-space: normal;
+            word-break: normal;
+            overflow-wrap: anywhere;
         }
         [data-testid="stChatMessage"] {
             padding: 0.75rem;
