@@ -1,5 +1,6 @@
 """Streamlit web app for the multi-agent language learning system."""
 
+import base64
 import os
 import requests
 import streamlit as st
@@ -26,6 +27,7 @@ LEVEL_FA = {"beginner": "مبتدی", "intermediate": "متوسط", "advanced": 
 EXPLAIN_LANGUAGES = ["Persian", "English", "German"]
 MODES = {
     "خودکار (هماهنگ‌کننده تصمیم می‌گیرد)": AgentType.COORDINATOR,
+    "دستیار عمومی (جستجو در وب)": "general_web",
     "واژگان": AgentType.VOCABULARY,
     "گرامر": AgentType.GRAMMAR,
     "مکالمه": AgentType.CONVERSATION,
@@ -79,6 +81,73 @@ def installed_models() -> set[str] | None:
 
 def with_tag(name: str) -> str:
     return name if ":" in name else f"{name}:latest"
+
+
+def answer_general_web(prompt: str, history: list[dict], api_key: str) -> str:
+    """Answer a general question with Groq's built-in browser search."""
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are a helpful general-purpose assistant. Search the web for current, factual, "
+                "or specific questions. Answer clearly in the user's language and include clickable "
+                "Markdown links to the sources you used. Never invent source URLs."
+            ),
+        },
+        *history[-10:],
+        {"role": "user", "content": prompt},
+    ]
+    response = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}"},
+        json={
+            "model": DEFAULT_GROQ_MODEL,
+            "messages": messages,
+            "tools": [{"type": "browser_search"}],
+            "tool_choice": "required",
+            "temperature": 0.2,
+            "max_completion_tokens": 4096,
+        },
+        timeout=120,
+    )
+    response.raise_for_status()
+    return response.json()["choices"][0]["message"]["content"]
+
+
+def answer_image_question(prompt: str, history: list[dict], api_key: str, image) -> str:
+    """Answer a question about an uploaded image with Groq's vision model."""
+    image_data = base64.b64encode(image.getvalue()).decode("ascii")
+    mime_type = image.type or "image/jpeg"
+    messages = [
+        {
+            "role": "system",
+            "content": "Answer the user's question about the supplied image in the user's language.",
+        },
+        *history[-10:],
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt or "Describe this image."},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{mime_type};base64,{image_data}"},
+                },
+            ],
+        },
+    ]
+    response = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}"},
+        json={
+            "model": "qwen/qwen3.8-27b",
+            "messages": messages,
+            "temperature": 0.2,
+            "max_completion_tokens": 4096,
+        },
+        timeout=120,
+    )
+    response.raise_for_status()
+    return response.json()["choices"][0]["message"]["content"]
 
 
 st.set_page_config(
@@ -169,6 +238,18 @@ for msg in st.session_state.messages:
             st.caption(f"{AGENT_ICONS.get(msg['agent'], '🤖')} معلم {TUTOR_FA[msg['agent']]}")
         st.markdown(msg["content"])
 
+uploaded_image = st.file_uploader(
+    "تصویر برای پرسش خود بارگذاری کنید (اختیاری)",
+    type=["jpg", "jpeg", "png", "webp"],
+    help="حداکثر اندازه تصویر 20 مگابایت است.",
+)
+if uploaded_image:
+    if uploaded_image.size > 20 * 1024 * 1024:
+        st.error("اندازه تصویر باید کمتر از 20 مگابایت باشد.")
+        uploaded_image = None
+    else:
+        st.image(uploaded_image, caption=uploaded_image.name, use_container_width=True)
+
 prompt = st.chat_input(f"هر سوالی دربارهٔ {LANGUAGE_FA[language]} بپرسید...")
 
 if not st.session_state.messages and not prompt:
@@ -183,28 +264,40 @@ if prompt:
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    coordinator = get_coordinator(tuple(models.items()), groq_api_key)
-    state = AgentState(
-        user_input=prompt,
-        learning_language=language,
-        difficulty_level=level,
-        explanation_language=explain_in,
-        history=history,
-        current_agent=MODES[mode_label],
-    )
-
     with st.chat_message("assistant"):
         try:
-            with st.spinner("در حال انتخاب معلم..."):
-                agent_type = coordinator.route(state)
-            st.caption(f"{AGENT_ICONS.get(agent_type.value, '🤖')} معلم {TUTOR_FA[agent_type.value]}")
-            answer = st.write_stream(coordinator.agents[agent_type].stream_response(state))
+            if uploaded_image:
+                agent_type = None
+                st.caption("🖼️ پاسخ دربارهٔ تصویر")
+                with st.spinner("در حال بررسی تصویر..."):
+                    answer = answer_image_question(prompt, history, groq_api_key, uploaded_image)
+                st.markdown(answer)
+            elif MODES[mode_label] == "general_web":
+                agent_type = "general_web"
+                st.caption("🌐 دستیار عمومی · جستجو در وب")
+                with st.spinner("در حال جستجو در وب..."):
+                    answer = answer_general_web(prompt, history, groq_api_key)
+                st.markdown(answer)
+            else:
+                coordinator = get_coordinator(tuple(models.items()), groq_api_key)
+                state = AgentState(
+                    user_input=prompt,
+                    learning_language=language,
+                    difficulty_level=level,
+                    explanation_language=explain_in,
+                    history=history,
+                    current_agent=MODES[mode_label],
+                )
+                with st.spinner("در حال انتخاب معلم..."):
+                    agent_type = coordinator.route(state)
+                st.caption(f"{AGENT_ICONS.get(agent_type.value, '🤖')} معلم {TUTOR_FA[agent_type.value]}")
+                answer = st.write_stream(coordinator.agents[agent_type].stream_response(state))
         except Exception as e:
             agent_type, answer = None, f"❌ خطا: {e}"
             st.markdown(answer)
 
     st.session_state.messages.append(
-        {"role": "assistant", "content": answer, "agent": agent_type.value if agent_type else None}
+        {"role": "assistant", "content": answer, "agent": agent_type.value if isinstance(agent_type, AgentType) else None}
     )
     if len(st.session_state.messages) == 2:
         st.rerun()
