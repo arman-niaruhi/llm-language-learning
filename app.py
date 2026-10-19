@@ -159,61 +159,28 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    .stApp, [data-testid="stSidebar"] { direction: rtl; }
-    .stApp h1, .stApp h2, .stApp h3, .stApp p, .stApp li, .stApp label,
-    [data-testid="stSidebar"] * { text-align: right; }
-    .stApp, [data-testid="stSidebar"], [data-testid="stMarkdownContainer"],
-    [data-testid="stChatMessageContent"] {
+    /* RTL only for the content, never for Streamlit's layout containers:
+       flipping .stApp / stSidebar breaks sidebar positioning on mobile. */
+    [data-testid="stMainBlockContainer"], [data-testid="stSidebarUserContent"],
+    [data-testid="stChatInput"] { direction: rtl; text-align: right; }
+    [data-testid="stMarkdownContainer"], [data-testid="stChatMessageContent"] {
         word-break: normal;
         overflow-wrap: anywhere;
     }
     @media (max-width: 640px) {
-        .block-container {
+        [data-testid="stMainBlockContainer"] {
             padding: 1rem 0.8rem 5rem;
-            width: 100%;
-            max-width: 100%;
         }
-        [data-testid="stSidebar"] {
-            width: min(18rem, 84vw) !important;
-            min-width: min(18rem, 84vw) !important;
-            max-width: 84vw !important;
-            z-index: 1001;
-        }
-        [data-testid="stSidebar"][aria-expanded="false"] {
-            min-width: 0 !important;
-            width: 0 !important;
-        }
-        [data-testid="stSidebar"] > div:first-child {
-            width: min(18rem, 84vw) !important;
-        }
-        [data-testid="collapsedControl"] {
-            display: flex !important;
-            visibility: visible !important;
-            z-index: 1002;
-        }
-        [data-testid="stSidebar"] section,
-        [data-testid="stSidebar"] .stSelectbox,
-        [data-testid="stSidebar"] .stRadio,
-        [data-testid="stSidebar"] .stTextInput,
-        [data-testid="stSidebar"] .stMarkdown,
-        [data-testid="stSidebar"] button {
-            width: 100%;
-            min-width: 0;
-        }
-        [data-testid="stSidebar"] p,
-        [data-testid="stSidebar"] label,
-        [data-testid="stSidebar"] button,
-        .stApp p, .stApp label, .stApp button {
+        [data-testid="stSidebarUserContent"] p,
+        [data-testid="stSidebarUserContent"] label,
+        [data-testid="stMainBlockContainer"] p,
+        [data-testid="stMainBlockContainer"] label,
+        [data-testid="stMainBlockContainer"] button {
             white-space: normal;
-            word-break: normal;
             overflow-wrap: anywhere;
         }
         [data-testid="stChatMessage"] {
             padding: 0.75rem;
-        }
-        [data-testid="stChatInput"] {
-            padding-left: 0.5rem;
-            padding-right: 0.5rem;
         }
     }
     </style>
