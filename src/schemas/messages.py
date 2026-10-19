@@ -12,6 +12,7 @@ class AgentType(str, Enum):
     CONVERSATION = "conversation"
     PRONUNCIATION = "pronunciation"
     VISION = "vision"
+    WEB_SEARCH = "web_search"
 
 
 class MessageType(str, Enum):

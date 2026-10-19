@@ -21,6 +21,7 @@ from src.agents.coordinator_agent import CoordinatorAgent
 from src.agents.vocabulary_agent import VocabularyAgent
 from src.agents.grammar_agent import GrammarAgent
 from src.agents.conversation_agent import ConversationAgent
+from src.agents.web_search_agent import WebSearchAgent
 from src.schemas.messages import AgentState, AgentType
 
 load_dotenv()
@@ -43,6 +44,7 @@ def build_coordinator() -> CoordinatorAgent:
     coordinator.register_agent(VocabularyAgent())
     coordinator.register_agent(GrammarAgent())
     coordinator.register_agent(ConversationAgent())
+    coordinator.register_agent(WebSearchAgent())
     return coordinator
 
 
@@ -53,6 +55,7 @@ TUTORS = {
     "vocabulary": AgentType.VOCABULARY,
     "grammar": AgentType.GRAMMAR,
     "conversation": AgentType.CONVERSATION,
+    "web_search": AgentType.WEB_SEARCH,
 }
 
 
