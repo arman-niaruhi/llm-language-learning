@@ -3,7 +3,7 @@ name = "language-learning-agents"
 version = "0.1.0"
 description = "A multi-agent language learning system with A2A communication using LangGraph"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<4.0"
 dependencies = [
     "fastapi>=0.149.0",
     "langchain>=1.4.6",
