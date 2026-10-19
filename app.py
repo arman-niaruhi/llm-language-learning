@@ -81,13 +81,30 @@ def with_tag(name: str) -> str:
     return name if ":" in name else f"{name}:latest"
 
 
-st.set_page_config(page_title="معلم زبان", page_icon="🎓")
+st.set_page_config(
+    page_title="معلم زبان",
+    page_icon="🎓",
+    layout="centered",
+    initial_sidebar_state="collapsed",
+)
 st.markdown(
     """
     <style>
     .stApp, [data-testid="stSidebar"] { direction: rtl; }
     .stApp h1, .stApp h2, .stApp h3, .stApp p, .stApp li, .stApp label,
     [data-testid="stSidebar"] * { text-align: right; }
+    @media (max-width: 640px) {
+        .block-container {
+            padding: 1rem 0.8rem 5rem;
+        }
+        [data-testid="stChatMessage"] {
+            padding: 0.75rem;
+        }
+        [data-testid="stChatInput"] {
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -156,9 +173,8 @@ prompt = st.chat_input(f"هر سوالی دربارهٔ {LANGUAGE_FA[language]} 
 
 if not st.session_state.messages and not prompt:
     st.markdown("**این‌ها را امتحان کنید:**")
-    cols = st.columns(2)
     for i, text in enumerate(STARTERS.get(language, DEFAULT_STARTERS)):
-        if cols[i % 2].button(text, use_container_width=True, key=f"starter_{i}"):
+        if st.button(text, use_container_width=True, key=f"starter_{i}"):
             prompt = text
 
 if prompt:
