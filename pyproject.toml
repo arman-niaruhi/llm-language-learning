@@ -1,0 +1,20 @@
+[project]
+name = "language-learning-agents"
+version = "0.1.0"
+description = "A multi-agent language learning system with A2A communication using LangGraph"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.149.0",
+    "langchain>=1.4.6",
+    "langchain-ollama>=1.1.0",
+    "langchain-openai>=1.7.2",
+    "langgraph>=1.2.16",
+    "pydantic>=2.14.1",
+    "python-dotenv>=1.2.4",
+    "requests>=2.34.2",
+    "streamlit>=1.66.0",
+]
+
+[project.scripts]
+learn = "src.main:main"
