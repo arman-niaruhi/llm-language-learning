@@ -167,7 +167,28 @@ st.markdown(
         word-break: normal;
         overflow-wrap: anywhere;
     }
+    /* Wide markdown tables scroll inside the message instead of overflowing the page. */
+    [data-testid="stMarkdownContainer"] table {
+        display: block;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-collapse: collapse;
+        direction: rtl;
+    }
+    [data-testid="stMarkdownContainer"] th,
+    [data-testid="stMarkdownContainer"] td {
+        padding: 0.4rem 0.6rem;
+        min-width: 5rem;
+        overflow-wrap: normal;
+        word-break: normal;
+        text-align: right;
+        vertical-align: top;
+    }
+    [data-testid="stMarkdownContainer"] th { white-space: nowrap; }
+    [data-testid="stChatMessageContent"] { min-width: 0; max-width: 100%; }
     @media (max-width: 640px) {
+        [data-testid="stMarkdownContainer"] table { font-size: 0.85rem; }
         [data-testid="stMainBlockContainer"] {
             padding: 1rem 0.8rem 5rem;
         }
