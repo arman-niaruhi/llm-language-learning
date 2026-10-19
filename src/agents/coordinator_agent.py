@@ -10,6 +10,7 @@ ROUTABLE = {
     "VOCABULARY": AgentType.VOCABULARY,
     "GRAMMAR": AgentType.GRAMMAR,
     "CONVERSATION": AgentType.CONVERSATION,
+    "WEB_SEARCH": AgentType.WEB_SEARCH,
 }
 
 
@@ -49,19 +50,20 @@ Available agents:
 - VOCABULARY: for word meanings, definitions, synonyms, translations
 - GRAMMAR: for grammar rules, sentence structure, corrections
 - CONVERSATION: for practice conversations and dialogue, including replies to an ongoing conversation
+- WEB_SEARCH: for anything needing current or online information (news, events, prices, facts about real people, places or products, links)
 
 Return JSON with:
-{{"agent": "VOCABULARY|GRAMMAR|CONVERSATION", "reason": "brief explanation"}}
+{{"agent": "VOCABULARY|GRAMMAR|CONVERSATION|WEB_SEARCH", "reason": "brief explanation"}}
 
 Respond ONLY with valid JSON."""
 
     def route(self, state: AgentState) -> AgentType:
         """Pick the tutor for this request, unless one was preselected."""
         if state.current_agent in ROUTABLE.values():
-            return state.current_agent
+            return AgentType(state.current_agent)  # use_enum_values stores it as a plain str
 
         response = self.llm.invoke(self._build_prompt(state))
-        match = re.search(r"VOCABULARY|GRAMMAR|CONVERSATION", response.content.upper())
+        match = re.search(r"WEB_SEARCH|VOCABULARY|GRAMMAR|CONVERSATION", response.content.upper())
         return ROUTABLE[match.group(0)] if match else AgentType.VOCABULARY
 
     def route_request(self, state: AgentState) -> AgentState:

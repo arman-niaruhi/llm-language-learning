@@ -2,6 +2,7 @@
 
 import base64
 import os
+import time
 import requests
 import streamlit as st
 from dotenv import load_dotenv
@@ -10,6 +11,7 @@ from src.agents.coordinator_agent import CoordinatorAgent
 from src.agents.vocabulary_agent import VocabularyAgent
 from src.agents.grammar_agent import GrammarAgent
 from src.agents.conversation_agent import ConversationAgent
+from src.agents.web_search_agent import WebSearchAgent
 from src.schemas.messages import AgentState, AgentType
 
 load_dotenv(override=True)
@@ -27,13 +29,13 @@ LEVEL_FA = {"beginner": "مبتدی", "intermediate": "متوسط", "advanced": 
 EXPLAIN_LANGUAGES = ["Persian", "English", "German"]
 MODES = {
     "خودکار (هماهنگ‌کننده تصمیم می‌گیرد)": AgentType.COORDINATOR,
-    "دستیار عمومی (جستجو در وب)": "general_web",
+    "جستجو در اینترنت": AgentType.WEB_SEARCH,
     "واژگان": AgentType.VOCABULARY,
     "گرامر": AgentType.GRAMMAR,
     "مکالمه": AgentType.CONVERSATION,
 }
-TUTOR_FA = {"vocabulary": "واژگان", "grammar": "گرامر", "conversation": "مکالمه"}
-AGENT_ICONS = {"vocabulary": "📚", "grammar": "✏️", "conversation": "💬"}
+TUTOR_FA = {"vocabulary": "واژگان", "grammar": "گرامر", "conversation": "مکالمه", "web_search": "جستجو در اینترنت"}
+AGENT_ICONS = {"vocabulary": "📚", "grammar": "✏️", "conversation": "💬", "web_search": "🌐"}
 STARTERS = {
     "German": [
         "۱۰ کلمهٔ آلمانی روزمرهٔ مربوط به غذا یاد بده",
@@ -67,6 +69,7 @@ def get_coordinator(models: tuple[tuple[AgentType, str], ...], api_key: str) -> 
     coordinator.register_agent(VocabularyAgent(model=m[AgentType.VOCABULARY], api_key=key))
     coordinator.register_agent(GrammarAgent(model=m[AgentType.GRAMMAR], api_key=key))
     coordinator.register_agent(ConversationAgent(model=m[AgentType.CONVERSATION], api_key=key))
+    coordinator.register_agent(WebSearchAgent(api_key=key))
     return coordinator
 
 
@@ -83,35 +86,32 @@ def with_tag(name: str) -> str:
     return name if ":" in name else f"{name}:latest"
 
 
-def answer_general_web(prompt: str, history: list[dict], api_key: str) -> str:
-    """Answer a general question with Groq's built-in browser search."""
-    messages = [
-        {
-            "role": "system",
-            "content": (
-                "You are a helpful general-purpose assistant. Search the web for current, factual, "
-                "or specific questions. Answer clearly in the user's language and include clickable "
-                "Markdown links to the sources you used. Never invent source URLs."
-            ),
-        },
-        *history[-10:],
-        {"role": "user", "content": prompt},
-    ]
-    response = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={"Authorization": f"Bearer {api_key}"},
-        json={
-            "model": DEFAULT_GROQ_MODEL,
-            "messages": messages,
-            "tools": [{"type": "browser_search"}],
-            "tool_choice": "required",
-            "temperature": 0.2,
-            "max_completion_tokens": 4096,
-        },
-        timeout=120,
+VISION_MODEL = "qwen/qwen3.8-27b"
+# Groq's free tier allows this model 8K tokens/minute. An image costs 2,048 tokens and
+# max_completion_tokens is reserved up front, so history and output are kept small.
+VISION_HISTORY_TURNS = 4
+VISION_HISTORY_CHARS = 600
+VISION_MAX_OUTPUT = 1500
+
+
+def post_groq(api_key: str, payload: dict, retries: int = 1) -> dict:
+    """POST to Groq; on 429 wait for retry-after (if short) and try again, else raise a readable error."""
+    for attempt in range(retries + 1):
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json=payload,
+            timeout=120,
+        )
+        if response.status_code != 429:
+            response.raise_for_status()
+            return response.json()
+        wait = float(response.headers.get("retry-after", 0) or 0)
+        if attempt < retries and wait <= 15:
+            time.sleep(wait or 3)
+    raise RuntimeError(
+        f"محدودیت درخواست گروک پر شده است. حدود {int(wait) or 'چند'} ثانیه صبر کنید و دوباره امتحان کنید."
     )
-    response.raise_for_status()
-    return response.json()["choices"][0]["message"]["content"]
 
 
 def answer_image_question(prompt: str, history: list[dict], api_key: str, image) -> str:
@@ -123,7 +123,10 @@ def answer_image_question(prompt: str, history: list[dict], api_key: str, image)
             "role": "system",
             "content": "Answer the user's question about the supplied image in the user's language.",
         },
-        *history[-10:],
+        *[
+            {"role": m["role"], "content": m["content"][:VISION_HISTORY_CHARS]}
+            for m in history[-VISION_HISTORY_TURNS:]
+        ],
         {
             "role": "user",
             "content": [
@@ -135,19 +138,13 @@ def answer_image_question(prompt: str, history: list[dict], api_key: str, image)
             ],
         },
     ]
-    response = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={"Authorization": f"Bearer {api_key}"},
-        json={
-            "model": "qwen/qwen3.8-27b",
-            "messages": messages,
-            "temperature": 0.2,
-            "max_completion_tokens": 4096,
-        },
-        timeout=120,
-    )
-    response.raise_for_status()
-    return response.json()["choices"][0]["message"]["content"]
+    data = post_groq(api_key, {
+        "model": VISION_MODEL,
+        "messages": messages,
+        "temperature": 0.2,
+        "max_completion_tokens": VISION_MAX_OUTPUT,
+    })
+    return data["choices"][0]["message"]["content"]
 
 
 st.set_page_config(
@@ -311,12 +308,6 @@ if prompt:
                 with st.spinner("در حال بررسی تصویر..."):
                     answer = answer_image_question(prompt, history, groq_api_key, uploaded_image)
                 st.markdown(answer)
-            elif MODES[mode_label] == "general_web":
-                agent_type = "general_web"
-                st.caption("🌐 دستیار عمومی · جستجو در وب")
-                with st.spinner("در حال جستجو در وب..."):
-                    answer = answer_general_web(prompt, history, groq_api_key)
-                st.markdown(answer)
             else:
                 coordinator = get_coordinator(tuple(models.items()), groq_api_key)
                 state = AgentState(
@@ -330,7 +321,12 @@ if prompt:
                 with st.spinner("در حال انتخاب معلم..."):
                     agent_type = coordinator.route(state)
                 st.caption(f"{AGENT_ICONS.get(agent_type.value, '🤖')} معلم {TUTOR_FA[agent_type.value]}")
-                answer = st.write_stream(coordinator.agents[agent_type].stream_response(state))
+                if agent_type == AgentType.WEB_SEARCH:
+                    with st.spinner("در حال جستجو در اینترنت..."):
+                        answer = coordinator.agents[agent_type].search(state)
+                    st.markdown(answer)
+                else:
+                    answer = st.write_stream(coordinator.agents[agent_type].stream_response(state))
         except Exception as e:
             agent_type, answer = None, f"❌ خطا: {e}"
             st.markdown(answer)

@@ -5,6 +5,7 @@ from src.agents.coordinator_agent import CoordinatorAgent
 from src.agents.vocabulary_agent import VocabularyAgent
 from src.agents.grammar_agent import GrammarAgent
 from src.agents.conversation_agent import ConversationAgent
+from src.agents.web_search_agent import WebSearchAgent
 from src.schemas.messages import AgentState
 
 
@@ -24,6 +25,7 @@ class LanguageLearningConsole:
         self.coordinator.register_agent(self.vocabulary_agent)
         self.coordinator.register_agent(self.grammar_agent)
         self.coordinator.register_agent(self.conversation_agent)
+        self.coordinator.register_agent(WebSearchAgent())
 
         self.learning_language = "English"
         self.difficulty_level = "beginner"
