@@ -173,7 +173,24 @@ st.markdown(
             width: 100%;
             max-width: 100%;
         }
-        [data-testid="stSidebar"] { min-width: min(18rem, 88vw); }
+        [data-testid="stSidebar"] {
+            width: min(18rem, 84vw) !important;
+            min-width: min(18rem, 84vw) !important;
+            max-width: 84vw !important;
+            z-index: 1001;
+        }
+        [data-testid="stSidebar"][aria-expanded="false"] {
+            min-width: 0 !important;
+            width: 0 !important;
+        }
+        [data-testid="stSidebar"] > div:first-child {
+            width: min(18rem, 84vw) !important;
+        }
+        [data-testid="collapsedControl"] {
+            display: flex !important;
+            visibility: visible !important;
+            z-index: 1002;
+        }
         [data-testid="stSidebar"] section,
         [data-testid="stSidebar"] .stSelectbox,
         [data-testid="stSidebar"] .stRadio,
