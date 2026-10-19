@@ -266,21 +266,27 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         if msg.get("agent"):
             st.caption(f"{AGENT_ICONS.get(msg['agent'], '🤖')} معلم {TUTOR_FA[msg['agent']]}")
+        if msg.get("image"):
+            st.image(msg["image"], use_container_width=True)
         st.markdown(msg["content"])
 
-uploaded_image = st.file_uploader(
-    "تصویر برای پرسش خود بارگذاری کنید (اختیاری)",
-    type=["jpg", "jpeg", "png", "webp"],
-    help="حداکثر اندازه تصویر 20 مگابایت است.",
-)
-if uploaded_image:
-    if uploaded_image.size > 20 * 1024 * 1024:
-        st.error("اندازه تصویر باید کمتر از 20 مگابایت باشد.")
-        uploaded_image = None
-    else:
-        st.image(uploaded_image, caption=uploaded_image.name, use_container_width=True)
+MAX_IMAGE_BYTES = 20 * 1024 * 1024
 
-prompt = st.chat_input(f"هر سوالی دربارهٔ {LANGUAGE_FA[language]} بپرسید...")
+# Image attachment lives inside the chat box (📎), like ChatGPT.
+submission = st.chat_input(
+    f"هر سوالی دربارهٔ {LANGUAGE_FA[language]} بپرسید...",
+    accept_file=True,
+    file_type=["jpg", "jpeg", "png", "webp"],
+)
+prompt, uploaded_image = None, None
+if submission:
+    prompt = submission.text or ""
+    uploaded_image = submission.files[0] if submission.files else None
+    if uploaded_image and uploaded_image.size > MAX_IMAGE_BYTES:
+        st.error("اندازه تصویر باید کمتر از 20 مگابایت باشد.")
+        prompt, uploaded_image = None, None
+    elif uploaded_image and not prompt:
+        prompt = "این تصویر را توضیح بده."
 
 if not st.session_state.messages and not prompt:
     st.markdown("**این‌ها را امتحان کنید:**")
@@ -290,8 +296,11 @@ if not st.session_state.messages and not prompt:
 
 if prompt:
     history = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    image_bytes = uploaded_image.getvalue() if uploaded_image else None
+    st.session_state.messages.append({"role": "user", "content": prompt, "image": image_bytes})
     with st.chat_message("user"):
+        if image_bytes:
+            st.image(image_bytes, use_container_width=True)
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
