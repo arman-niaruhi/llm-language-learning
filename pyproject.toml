@@ -16,5 +16,8 @@ dependencies = [
     "streamlit>=1.66.0",
 ]
 
+[tool.poetry]
+package-mode = false
+
 [project.scripts]
 learn = "src.main:main"

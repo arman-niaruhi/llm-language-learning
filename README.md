@@ -37,7 +37,7 @@ language-learning-agents/
 ### Prerequisites
 
 - Python 3.11+
-- [Ollama](https://ollama.ai) installed locally (or OpenAI API key as fallback)
+- Groq API key and a supported Groq model
 
 ### Installation
 
@@ -46,28 +46,14 @@ language-learning-agents/
 cd llm-language-learning
 ```
 
-2. **Setup Ollama** (if using local models):
+2. Configure Groq (for the Streamlit app, the API key can be entered in the sidebar):
 ```bash
-# Install Ollama from https://ollama.ai
-# Pull a model (default: mistral)
-ollama pull mistral
-# Or use other models
-ollama pull llama2
-ollama pull neural-chat
-# Start Ollama server
-ollama serve
+LLM_PROVIDER=groq
+GROQ_MODEL=llama-3.3-70b-versatile
+GROQ_API_KEY=gsk-your-key-here
 ```
 
-3. (Optional) Create `.env` file to configure:
-```bash
-# For custom Ollama URL
-echo "OLLAMA_BASE_URL=http://localhost:11434" > .env
-
-# Or for OpenAI (if not using Ollama)
-echo "OPENAI_API_KEY=sk-your-key-here" >> .env
-```
-
-4. Install dependencies using uv:
+3. Install dependencies using uv:
 ```bash
 uv sync
 ```
@@ -226,8 +212,7 @@ history = broker.get_message_history()
 
 - **LangGraph**: State graph management for agents
 - **LangChain**: LLM framework and utilities
-- **Ollama**: Local language models (primary)
-- **OpenAI API**: Cloud-based language model (fallback)
+- **Groq**: Hosted language models
 - **Pydantic**: Data validation and schemas
 - **uv**: Python package manager
 

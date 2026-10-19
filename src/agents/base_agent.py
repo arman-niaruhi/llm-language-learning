@@ -4,12 +4,12 @@ import os
 import time
 from abc import ABC
 from typing import Optional
-from langchain_ollama import ChatOllama
 from langgraph.graph import StateGraph, END
 from src.schemas.messages import AgentType, AgentState, AgentMessage, MessageType
 from src.communication.a2a_broker import get_broker
 
 DEFAULT_MODEL = "llama3.1"
+DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
 HISTORY_TURNS = 6
 DEFAULT_STREAM_DELAY = 0.03  # seconds between streamed chunks
 
@@ -21,13 +21,11 @@ class BaseAgent(ABC):
         self.agent_type = agent_type
         # LLM_PROVIDER=groq sends every agent to Groq's hosted Llama models (GROQ_MODEL).
         # Otherwise the local Ollama model names from .env are used.
-        self.provider = os.getenv("LLM_PROVIDER", "ollama").lower()
+        self.provider = "groq"
 
         if self.provider == "groq":
             from langchain_openai import ChatOpenAI
-            self.model = model or os.getenv("GROQ_MODEL")
-            if not self.model:
-                raise ValueError("GROQ_MODEL must be set in .env when LLM_PROVIDER=groq")
+            self.model = model or os.getenv("GROQ_MODEL", DEFAULT_GROQ_MODEL)
             self.llm = ChatOpenAI(
                 model=self.model,
                 base_url="https://api.groq.com/openai/v1",
@@ -35,6 +33,8 @@ class BaseAgent(ABC):
                 temperature=0.7,
             )
         else:
+            from langchain_ollama import ChatOllama
+
             self.model = (
                 model
                 or os.getenv(f"{agent_type.value.upper()}_MODEL")

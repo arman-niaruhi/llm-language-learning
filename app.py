@@ -13,7 +13,8 @@ from src.schemas.messages import AgentState, AgentType
 
 load_dotenv(override=True)
 OLLAMA_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-USE_GROQ = os.getenv("LLM_PROVIDER", "ollama").lower() == "groq"
+USE_GROQ = True
+DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
 
 LANGUAGES = ["German", "English", "Spanish", "French", "Italian", "Portuguese", "Dutch", "Persian"]
 LANGUAGE_FA = {
@@ -50,7 +51,7 @@ def agent_models() -> dict[AgentType, str]:
     """Model per agent: GROQ_MODEL for all agents with Groq, else per-agent .env values falling back to OLLAMA_MODEL."""
     agents = [AgentType.COORDINATOR, AgentType.VOCABULARY, AgentType.GRAMMAR, AgentType.CONVERSATION]
     if USE_GROQ:
-        groq_model = os.getenv("GROQ_MODEL", "")
+        groq_model = os.getenv("GROQ_MODEL", DEFAULT_GROQ_MODEL)
         return {t: groq_model for t in agents}
     default = os.getenv("OLLAMA_MODEL", DEFAULT_MODEL)
     return {t: os.getenv(f"{t.value.upper()}_MODEL") or default for t in agents}
